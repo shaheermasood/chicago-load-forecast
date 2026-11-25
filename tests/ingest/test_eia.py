@@ -99,3 +99,24 @@ def test_facet_values(client):
     facets = [{"id": "ZONA", "name": "Zone A"}]
     responses.get(f"{BASE_URL}/{ROUTE}/facet/subba", json={"response": {"facets": facets}})
     assert client.facet_values(ROUTE, "subba") == facets
+
+
+@responses.activate
+def test_errors_never_contain_the_api_key():
+    client = EIAClient("SECRET-KEY-123", max_retries=0, backoff_seconds=0)
+    responses.get(
+        f"{BASE_URL}/{ROUTE}", body=requests.ConnectionError("url=?api_key=SECRET-KEY-123")
+    )
+    with pytest.raises(EIAError) as excinfo:
+        client.get(ROUTE)
+    assert "SECRET-KEY-123" not in str(excinfo.value)
+    assert excinfo.value.__cause__ is None
+
+
+@responses.activate
+def test_error_body_echoing_key_is_redacted():
+    client = EIAClient("SECRET-KEY-123", backoff_seconds=0)
+    responses.get(f"{BASE_URL}/{ROUTE}", status=403, body="bad key SECRET-KEY-123")
+    with pytest.raises(EIAError) as excinfo:
+        client.get(ROUTE)
+    assert "SECRET-KEY-123" not in str(excinfo.value)

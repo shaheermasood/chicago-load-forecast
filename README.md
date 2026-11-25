@@ -1,6 +1,6 @@
 # Chicagoland Electricity Demand Forecasting
 
-![CI](https://github.com/<your-username>/chicago-load-forecast/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/shaheermasood/chicago-load-forecast/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -33,7 +33,7 @@ No data is committed to this repo. `make backfill` (Phase 1) rebuilds it from th
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-username>/chicago-load-forecast.git
+git clone https://github.com/shaheermasood/chicago-load-forecast.git
 cd chicago-load-forecast
 cp .env.example .env          # add your free EIA API key
 make setup                    # installs deps (uv) + pre-commit hooks

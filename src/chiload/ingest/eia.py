@@ -9,17 +9,17 @@ Docs: https://www.eia.gov/opendata/documentation.php
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Iterator
 from typing import Any
 
 import requests
 
+from chiload.ingest.http import get_json
+
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.eia.gov/v2"
 MAX_PAGE_SIZE = 5000
-RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 
 class EIAError(RuntimeError):
@@ -48,28 +48,19 @@ class EIAClient:
         """GET a route and return the parsed `response` object, retrying transient errors."""
         url = f"{self.base_url}/{route.strip('/')}"
         query = {**(params or {}), "api_key": self.api_key}
-
-        for attempt in range(self.max_retries + 1):
-            try:
-                resp = self.session.get(url, params=query, timeout=self.timeout)
-            except (requests.ConnectionError, requests.Timeout) as exc:
-                if attempt == self.max_retries:
-                    raise EIAError(f"Network error calling {route}: {exc}") from exc
-                self._sleep(attempt, reason=type(exc).__name__)
-                continue
-
-            if resp.status_code in RETRY_STATUSES and attempt < self.max_retries:
-                self._sleep(attempt, reason=f"HTTP {resp.status_code}")
-                continue
-            if resp.status_code != 200:
-                raise EIAError(f"HTTP {resp.status_code} from {route}: {resp.text[:300]}")
-
-            body = resp.json()
-            if "error" in body:
-                raise EIAError(f"EIA error from {route}: {body['error']}")
-            return body["response"]
-
-        raise EIAError(f"Exhausted retries for {route}")  # pragma: no cover
+        body = get_json(
+            self.session,
+            url,
+            query,
+            max_retries=self.max_retries,
+            backoff_seconds=self.backoff_seconds,
+            timeout=self.timeout,
+            redact=[self.api_key],
+            error_cls=EIAError,
+        )
+        if "error" in body:
+            raise EIAError(f"EIA error from {route}: {body['error']}")
+        return body["response"]
 
     def iter_data(
         self,
@@ -78,7 +69,11 @@ class EIAClient:
         *,
         page_size: int = MAX_PAGE_SIZE,
     ) -> Iterator[dict[str, Any]]:
-        """Yield every row from a `/data` route, following offset pagination."""
+        """Yield every row from a `/data` route, following offset pagination.
+
+        Pass a `sort[...]` param when results can span pages: without an explicit sort the
+        API doesn't promise a stable order, so offset paging could skip or repeat rows.
+        """
         if not 0 < page_size <= MAX_PAGE_SIZE:
             raise ValueError(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
         data_route = route if route.rstrip("/").endswith("/data") else f"{route}/data"
@@ -95,8 +90,3 @@ class EIAClient:
     def facet_values(self, route: str, facet: str) -> list[dict[str, str]]:
         """Return the available values ({'id', 'name'}) for a facet on a route."""
         return self.get(f"{route}/facet/{facet}").get("facets", [])
-
-    def _sleep(self, attempt: int, *, reason: str) -> None:
-        delay = self.backoff_seconds * (2**attempt)
-        log.warning("EIA request failed (%s); retrying in %.1fs", reason, delay)
-        time.sleep(delay)
