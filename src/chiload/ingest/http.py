@@ -39,13 +39,16 @@ def get_json(
     backoff_seconds: float = 1.0,
     timeout: float = 30.0,
     redact: Iterable[str] = (),
+    give_up_if: Iterable[str] = (),
     error_cls: type[RuntimeError] = HTTPFetchError,
 ) -> Any:
     """GET `url` and return parsed JSON, retrying network errors and 429/5xx responses.
 
-    Backoff doubles each attempt: backoff_seconds * 2**attempt.
+    Backoff doubles each attempt: backoff_seconds * 2**attempt. If a retryable response's body
+    contains any string in `give_up_if` (e.g. "daily limit exceeded"), fail at once instead.
     """
     secrets = tuple(redact)
+    fatal = tuple(give_up_if)
     for attempt in range(max_retries + 1):
         try:
             resp = session.get(url, params=params, timeout=timeout)
@@ -55,7 +58,8 @@ def get_json(
             _sleep(attempt, backoff_seconds, type(exc).__name__)
             continue
 
-        if resp.status_code in RETRY_STATUSES and attempt < max_retries:
+        hopeless = resp.status_code in RETRY_STATUSES and any(m in resp.text for m in fatal)
+        if resp.status_code in RETRY_STATUSES and attempt < max_retries and not hopeless:
             _sleep(attempt, backoff_seconds, f"HTTP {resp.status_code}")
             continue
         if resp.status_code != 200:

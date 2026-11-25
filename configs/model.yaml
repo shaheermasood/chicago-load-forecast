@@ -5,6 +5,28 @@ eia:
   route: electricity/rto/region-sub-ba-data
   parent_ba: PJM
   subregion: null # set after running `make find-comed` (see docs/decisions/0002)
+  start: 2018-07-01 # first month of EIA-930 subregion data
+
+weather:
+  # Which Open-Meteo archives to ingest (see docs/decisions/0003). Each lands in
+  # data/raw/weather/source=<name>/.
+  sources:
+    previous_runs: # forecasts as issued 1 and 2 days ahead: main training features
+      start: 2022-01-01
+      lead_days: [1, 2]
+    era5: # reanalysis ("actual" weather): ablation and long-run climatology
+      start: 2018-07-01
+  # Open-Meteo variable -> our column name (units are in the name and checked on ingest)
+  variables:
+    temperature_2m: temp_f
+    dew_point_2m: dew_point_f
+    apparent_temperature: apparent_temp_f
+    relative_humidity_2m: rh_pct
+    wind_speed_10m: wind_mph
+    cloud_cover: cloud_cover_pct
+
+ingest:
+  incremental_lookback_days: 7 # re-fetch this many recent days to pick up revisions and lag
 
 forecast:
   issue_hour_local: 10 # forecasts issued at 10:00 Central for the next day

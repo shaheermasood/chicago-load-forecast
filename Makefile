@@ -1,4 +1,4 @@
-.PHONY: setup lint format test find-comed check
+.PHONY: setup lint format test find-comed backfill ingest check
 
 setup:            ## Install dependencies and git hooks
 	uv sync
@@ -18,6 +18,12 @@ test:             ## Run the test suite
 find-comed:       ## Phase 0: discover ComEd's EIA-930 subregion code (needs EIA_API_KEY)
 	uv run python scripts/find_comed_code.py
 
+backfill:         ## Fetch all raw data from each source's start date to today (idempotent)
+	uv run python -m chiload.ingest backfill
+
+ingest:           ## Fetch only recent days, re-checking the last week for revisions
+	uv run python -m chiload.ingest incremental
+
 check: lint test  ## Everything CI runs
 
-# Later phases will add: backfill, build (dbt), train, serve, dashboard
+# Later phases will add: build (dbt), train, serve, dashboard
