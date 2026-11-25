@@ -1,0 +1,11 @@
+# Checked in on purpose: no secrets, just a local DuckDB file.
+# Run dbt from the repo root (`make build`) so the relative paths resolve.
+chiload:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CHILOAD_DUCKDB_PATH', 'data/warehouse.duckdb') }}"
+      threads: 4
+      settings:
+        TimeZone: UTC # timestamptz values print in UTC regardless of the machine's zone

@@ -1,0 +1,22 @@
+name: chiload
+version: "0.1.0"
+config-version: 2
+profile: chiload
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  local_tz: America/Chicago
+
+models:
+  chiload:
+    staging:
+      +materialized: view
+      +schema: staging
+
+flags:
+  send_anonymous_usage_stats: false

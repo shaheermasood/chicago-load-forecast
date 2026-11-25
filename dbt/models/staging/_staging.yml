@@ -1,0 +1,103 @@
+version: 2
+
+models:
+  - name: stg_eia__hourly_demand
+    description: >
+      Hourly ComEd demand from EIA-930, one row per UTC hour. period_local is wall-clock
+      Central time: it repeats at the fall-back hour and skips the spring-forward hour, so always
+      join on period_utc.
+    columns:
+      - name: period_utc
+        description: Start of the hour, UTC. Primary key.
+        data_tests:
+          - unique
+          - not_null
+          - max_gap_hours:
+              arguments:
+                max_hours: 2
+              config:
+                severity: warn # real gaps get filled and flagged in intermediate models
+      - name: period_local
+        description: period_utc in America/Chicago, as a naive timestamp.
+        data_tests: [not_null]
+      - name: subregion_code
+        data_tests: [not_null]
+      - name: load_mw
+        description: Average demand over the hour (MW). NULL when EIA had no value.
+        data_tests:
+          - between:
+              arguments:
+                min_value: 5000
+                max_value: 30000
+              config:
+                severity: warn # flag, don't drop; tune after looking at the data (EDA)
+      - name: is_load_missing
+        data_tests: [not_null]
+      - name: fetched_at_utc
+        description: When this value was first seen (ADR 0004).
+        data_tests: [not_null]
+
+  - name: stg_open_meteo__weather_forecast
+    description: >
+      Open-Meteo Previous Runs forecasts. One row per valid hour, weather point and lead time
+      (lead 1 for day-ahead, lead 2 for the 48-hour horizon).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [period_utc, point, lead_days]
+      - max_gap_hours:
+          arguments:
+            column_name: period_utc
+            max_hours: 2
+            group_by: [point, lead_days]
+          config:
+            severity: warn
+    columns:
+      - name: period_utc
+        data_tests: [not_null]
+      - name: point
+        description: Weather point name from configs/weather_points.yaml.
+        data_tests: [not_null]
+      - name: lead_days
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: temp_f
+        data_tests:
+          - between:
+              arguments:
+                min_value: -40
+                max_value: 115
+      - name: rh_pct
+        data_tests:
+          - between:
+              arguments:
+                min_value: 0
+                max_value: 100
+
+  - name: stg_open_meteo__weather_reanalysis
+    description: ERA5 reanalysis per weather point, one row per hour and point.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [period_utc, point]
+      - max_gap_hours:
+          arguments:
+            column_name: period_utc
+            max_hours: 2
+            group_by: [point]
+          config:
+            severity: warn
+    columns:
+      - name: period_utc
+        data_tests: [not_null]
+      - name: point
+        data_tests: [not_null]
+      - name: temp_f
+        data_tests:
+          - between:
+              arguments:
+                min_value: -40
+                max_value: 115

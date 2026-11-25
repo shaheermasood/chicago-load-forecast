@@ -1,0 +1,47 @@
+version: 2
+
+# Raw Parquet partitions written by `make backfill` (docs/decisions/0004). Only the current
+# values (part.parquet) are read here; superseded values in _revisions/ are left out.
+# CHILOAD_RAW_DIR points somewhere else, which the tests use for fixture data.
+
+sources:
+  - name: eia
+    description: EIA Form EIA-930 hourly demand by balancing-authority subregion (API v2).
+    loaded_at_field: period_utc
+    freshness: # EIA-930 usually lags about a day
+      warn_after: { count: 2, period: day }
+      error_after: { count: 4, period: day }
+    tables:
+      - name: hourly_demand
+        meta:
+          external_location: >-
+            read_parquet('{{ env_var("CHILOAD_RAW_DIR", "data/raw") }}/eia/date=*/part.parquet',
+            hive_partitioning = false, union_by_name = true)
+        columns:
+          - name: period_utc
+            description: Start of the hour, UTC.
+          - name: load_mw
+            description: Demand over the hour. EIA reports MWh, which equals average MW for one hour.
+
+  - name: open_meteo
+    description: Open-Meteo weather for the points in configs/weather_points.yaml.
+    loaded_at_field: period_utc
+    freshness:
+      warn_after: { count: 2, period: day }
+      error_after: { count: 4, period: day }
+    tables:
+      - name: previous_runs
+        description: Forecasts as issued `lead_days` days before the valid hour (ADR 0003).
+        meta:
+          external_location: >-
+            read_parquet('{{ env_var("CHILOAD_RAW_DIR", "data/raw") }}/weather/source=previous_runs/date=*/part.parquet',
+            hive_partitioning = false, union_by_name = true)
+      - name: era5
+        description: ERA5 reanalysis (observed weather). Published about 5 days late.
+        freshness:
+          warn_after: { count: 8, period: day }
+          error_after: { count: 14, period: day }
+        meta:
+          external_location: >-
+            read_parquet('{{ env_var("CHILOAD_RAW_DIR", "data/raw") }}/weather/source=era5/date=*/part.parquet',
+            hive_partitioning = false, union_by_name = true)
