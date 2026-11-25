@@ -1,0 +1,23 @@
+# Weather points across the ComEd zone. Weights are placeholders: replace with
+# population shares (e.g. from Census county data) in Phase 1 and record the source.
+points:
+  - name: ohare
+    lat: 41.9786
+    lon: -87.9048
+    weight: 0.30
+  - name: midway
+    lat: 41.7868
+    lon: -87.7522
+    weight: 0.30
+  - name: waukegan
+    lat: 42.4222
+    lon: -87.8679
+    weight: 0.15
+  - name: joliet
+    lat: 41.5250
+    lon: -88.0817
+    weight: 0.15
+  - name: rockford
+    lat: 42.1954
+    lon: -89.0972
+    weight: 0.10

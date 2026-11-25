@@ -1,0 +1,12 @@
+target: load_mw
+timezone: America/Chicago
+
+eia:
+  route: electricity/rto/region-sub-ba-data
+  parent_ba: PJM
+  subregion: null # set after running `make find-comed` (see docs/decisions/0002)
+
+forecast:
+  issue_hour_local: 10 # forecasts issued at 10:00 Central for the next day
+  horizon_hours: 48
+  min_lag_hours: 48 # no load lag shorter than this (leakage guard)
