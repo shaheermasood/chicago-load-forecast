@@ -7,7 +7,7 @@
 Day-ahead hourly electricity demand forecasts for the **ComEd zone** (Chicago and northern
 Illinois), built as an end-to-end pipeline: ingestion → warehouse → model → API → monitoring.
 
-> **Status:** Phase 0 — project setup. Results will go here once the model exists.
+> **Status:** Phase 1 — ingestion. Results will go here once the model exists.
 
 ## The problem
 
@@ -26,9 +26,12 @@ were issued, and the calendar.
 | Source | Use |
 | --- | --- |
 | [EIA-930](https://www.eia.gov/electricity/930-content/about.html) via EIA API v2 | Hourly ComEd subregion demand (target) |
-| [Open-Meteo](https://open-meteo.com/) Historical Forecast / Historical Weather APIs | Weather features |
+| [Open-Meteo](https://open-meteo.com/) Previous Runs API | Weather forecasts as issued 1–2 days ahead (training features, [ADR 0003](docs/decisions/0003-weather-from-previous-runs-api.md)) |
+| [Open-Meteo](https://open-meteo.com/) Historical Weather API (ERA5) | Observed weather for the oracle ablation |
 
-No data is committed to this repo. `make backfill` (Phase 1) rebuilds it from the sources.
+No data is committed to this repo. `make backfill` rebuilds it from the sources into
+`data/raw/<source>/date=YYYY-MM-DD/part.parquet`. Re-running it is a no-op, and `make ingest`
+fetches only recent days ([ADR 0004](docs/decisions/0004-idempotent-raw-partitions.md)).
 
 ## Quick start
 
@@ -38,7 +41,8 @@ cd chicago-load-forecast
 cp .env.example .env          # add your free EIA API key
 make setup                    # installs deps (uv) + pre-commit hooks
 make check                    # lint + tests
-make find-comed               # Phase 0: confirm ComEd's EIA subregion code
+make find-comed               # confirm ComEd's EIA subregion code, then set it in configs/model.yaml
+make backfill                 # fetch 2018-07 → today (EIA + weather); safe to re-run
 ```
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
@@ -64,7 +68,7 @@ See [`docs/decisions/`](docs/decisions/) for why things are the way they are.
 ## Roadmap
 
 - [x] Phase 0 — Repo, tooling, CI, ComEd code discovery
-- [ ] Phase 1 — Idempotent ingestion + backfill
+- [ ] Phase 1 — Idempotent ingestion + backfill (loaders done; full backfill pending)
 - [ ] Phase 2 — dbt warehouse + data-quality tests
 - [ ] Phase 3 — EDA
 - [ ] Phase 4 — Baselines + rolling-origin backtest
