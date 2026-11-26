@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: int_load_hourly
+    description: >
+      Continuous hourly load (no missing hours), with anomalies flagged and short gaps
+      interpolated. reported_load_mw keeps EIA's original value.
+    columns:
+      - name: period_utc
+        data_tests: [unique, not_null]
+      - name: load_mw
+        description: Cleaned load. NULL only where a gap was longer than max_interp_gap_hours.
+        data_tests:
+          - between:
+              arguments: { min_value: 5000, max_value: 30000 }
+      - name: is_imputed
+        data_tests: [not_null]
+      - name: is_anomalous
+        data_tests: [not_null]
+    data_tests:
+      - max_gap_hours:
+          arguments: { column_name: period_utc, max_hours: 1 } # the spine has every hour
+
+  - name: int_weather_zone_hourly
+    description: Population-weighted zone-average weather per hour, source and lead time.
+    data_tests:
+      - unique_combination:
+          arguments: { columns: [weather_source, period_utc, lead_days] }
+    columns:
+      - name: weather_source
+        data_tests:
+          - accepted_values:
+              arguments: { values: [forecast, reanalysis] }
+      - name: n_points
+        description: Number of weather points averaged. Below 5 means some were missing.
+        data_tests: [not_null]
+
+  - name: int_forecast_issues
+    description: One row per target local day, with its issue time and the load known then.
+    columns:
+      - name: target_date_local
+        data_tests: [unique, not_null]
+      - name: issue_time_utc
+        data_tests: [not_null]

@@ -1,4 +1,4 @@
-.PHONY: setup lint format test find-comed backfill ingest build freshness docs check
+.PHONY: setup lint format test find-comed backfill ingest seeds build freshness docs check
 
 setup:            ## Install dependencies and git hooks
 	uv sync
@@ -25,6 +25,9 @@ ingest:           ## Fetch only recent days, re-checking the last week for revis
 	uv run python -m chiload.ingest incremental
 
 DBT = uv run dbt --project-dir dbt --profiles-dir dbt
+
+seeds:            ## Regenerate dbt seed CSVs (holidays, weather-point weights) from Python/config
+	uv run python scripts/make_seeds.py
 
 build:            ## Build and test the dbt warehouse (data/warehouse.duckdb); needs a backfill first
 	$(DBT) build
