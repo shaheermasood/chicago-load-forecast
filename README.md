@@ -7,7 +7,7 @@
 Day-ahead hourly electricity demand forecasts for the **ComEd zone** (Chicago and northern
 Illinois), built as an end-to-end pipeline: ingestion → warehouse → model → API → monitoring.
 
-> **Status:** Phase 4 — baselines and backtest. Results will go here once it runs on real data. Results will go here once the model exists.
+> **Status:** Phase 5 — LightGBM with calibrated 80% intervals. Results will go here once it runs on real data. Results will go here once the model exists.
 
 ## The problem
 
@@ -74,7 +74,7 @@ See [`docs/decisions/`](docs/decisions/) for why things are the way they are.
 - [x] Phase 2 — dbt warehouse + data-quality tests (pending a run on real data)
 - [ ] Phase 3 — EDA
 - [ ] Phase 4 — Baselines + rolling-origin backtest (code done; needs real data)
-- [ ] Phase 5 — Features, models, prediction intervals
+- [ ] Phase 5 — Features, models, prediction intervals (code done; needs real data)
 - [ ] Phase 6 — Holdout evaluation, SHAP, model card
 - [ ] Phase 7 — Scheduled pipeline, API, dashboard, monitoring
 - [ ] Phase 8 — 30-day live run, polish

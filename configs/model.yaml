@@ -36,6 +36,21 @@ backtest:
   holdout_months: 12 # the final 12 months are never used before Phase 6
   min_eval_hours_per_day: 20 # a day needs this many scored hours to count for peak error
 
+models:
+  lightgbm: # Phase 5. Tune only on the backtest folds, never the holdout (ADR 0007).
+    interval: 0.8 # central prediction interval (10%-90%)
+    calibration_days: 60 # most recent training days held back to calibrate intervals (CQR)
+    params:
+      n_estimators: 800
+      learning_rate: 0.03
+      num_leaves: 63
+      min_child_samples: 40
+      subsample: 0.8
+      subsample_freq: 1
+      colsample_bytree: 0.8
+      reg_lambda: 1.0
+      random_state: 42
+
 mlflow:
   tracking_uri: sqlite:///mlruns/mlflow.db
   artifact_location: mlruns/artifacts
