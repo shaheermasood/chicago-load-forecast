@@ -7,7 +7,7 @@
 Day-ahead hourly electricity demand forecasts for the **ComEd zone** (Chicago and northern
 Illinois), built as an end-to-end pipeline: ingestion → warehouse → model → API → monitoring.
 
-> **Status:** Phase 1 — ingestion. Results will go here once the model exists.
+> **Status:** Phase 2 — warehouse (staging models done). Results will go here once the model exists.
 
 ## The problem
 
@@ -43,6 +43,7 @@ make setup                    # installs deps (uv) + pre-commit hooks
 make check                    # lint + tests
 make find-comed               # confirm ComEd's EIA subregion code, then set it in configs/model.yaml
 make backfill                 # fetch 2018-07 → today (EIA + weather); safe to re-run
+make build                    # dbt: build and test the DuckDB warehouse
 ```
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
@@ -69,7 +70,7 @@ See [`docs/decisions/`](docs/decisions/) for why things are the way they are.
 
 - [x] Phase 0 — Repo, tooling, CI, ComEd code discovery
 - [ ] Phase 1 — Idempotent ingestion + backfill (loaders done; full backfill pending)
-- [ ] Phase 2 — dbt warehouse + data-quality tests
+- [ ] Phase 2 — dbt warehouse + data-quality tests (staging done; intermediate + marts next)
 - [ ] Phase 3 — EDA
 - [ ] Phase 4 — Baselines + rolling-origin backtest
 - [ ] Phase 5 — Features, models, prediction intervals

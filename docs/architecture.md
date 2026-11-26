@@ -26,3 +26,19 @@ data/raw/
 
 Entry point: `python -m chiload.ingest {backfill|incremental}`, wrapped by `make backfill` and
 `make ingest`. See ADRs 0003 (weather source) and 0004 (partitioning and revisions).
+
+## Warehouse (Phase 2)
+
+dbt-duckdb reads the raw Parquet directly (`dbt/models/staging/_sources.yml`) into
+`data/warehouse.duckdb`:
+
+| Model | Grain | Notes |
+| --- | --- | --- |
+| `staging.stg_eia__hourly_demand` | UTC hour | `load_mw`, `is_load_missing`, `period_local` |
+| `staging.stg_open_meteo__weather_forecast` | UTC hour × point × lead_days | forecasts as issued |
+| `staging.stg_open_meteo__weather_reanalysis` | UTC hour × point | ERA5, for the ablation only |
+
+Staging views cast types, add Central local time, and keep the latest-fetched row per key.
+Data tests: unique keys, not-null, value ranges (warn), gaps over 2 hours (warn), and source
+freshness. Intermediate models (load joined to weather, DST and gap handling) and the
+`fct_hourly_features` mart come next.

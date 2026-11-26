@@ -1,4 +1,4 @@
-.PHONY: setup lint format test find-comed backfill ingest check
+.PHONY: setup lint format test find-comed backfill ingest build freshness docs check
 
 setup:            ## Install dependencies and git hooks
 	uv sync
@@ -24,6 +24,18 @@ backfill:         ## Fetch all raw data from each source's start date to today (
 ingest:           ## Fetch only recent days, re-checking the last week for revisions
 	uv run python -m chiload.ingest incremental
 
+DBT = uv run dbt --project-dir dbt --profiles-dir dbt
+
+build:            ## Build and test the dbt warehouse (data/warehouse.duckdb); needs a backfill first
+	$(DBT) build
+
+freshness:        ## Check that raw sources are recent enough
+	$(DBT) source freshness
+
+docs:             ## Generate dbt docs and serve the lineage graph on localhost:8080
+	$(DBT) docs generate
+	$(DBT) docs serve
+
 check: lint test  ## Everything CI runs
 
-# Later phases will add: build (dbt), train, serve, dashboard
+# Later phases will add: train, serve, dashboard
