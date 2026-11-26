@@ -1,4 +1,4 @@
-.PHONY: setup lint format test find-comed backfill ingest seeds build freshness docs check
+.PHONY: setup lint format test find-comed backfill ingest seeds build freshness docs backtest mlflow check
 
 setup:            ## Install dependencies and git hooks
 	uv sync
@@ -38,6 +38,12 @@ freshness:        ## Check that raw sources are recent enough
 docs:             ## Generate dbt docs and serve the lineage graph on localhost:8080
 	$(DBT) docs generate
 	$(DBT) docs serve
+
+backtest:         ## Rolling-origin backtest of the baselines; logs to MLflow, writes reports/baselines.md
+	uv run python -m chiload.models.backtest --report reports/baselines.md
+
+mlflow:           ## Open the MLflow UI on localhost:5000
+	uv run mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db
 
 check: lint test  ## Everything CI runs
 

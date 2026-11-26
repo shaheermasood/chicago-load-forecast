@@ -49,3 +49,16 @@ bridge days), and weather-point weights from `configs/weather_points.yaml`.
 
 Data tests: unique keys, not-null, value ranges, gap checks, source freshness, and two
 leakage tests that fail the build if any feature postdates its issue time (ADR 0006).
+
+## Backtest (Phase 4)
+
+`python -m chiload.models.backtest` (`make backtest`) reads `marts.fct_hourly_features` and runs
+an expanding-window, monthly rolling-origin backtest (ADR 0007). It logs one MLflow run per
+model, with per-fold and overall MAPE, RMSE, daily-peak MAPE and bias, plus predictions as
+an artifact. It also writes `reports/baselines.md`.
+
+| Baseline | What it predicts |
+| --- | --- |
+| `seasonal_naive_week` | load at the same hour one week earlier: the bar to beat by 30% |
+| `naive_48h` | load at the same hour two days earlier, the latest same-hour value known at 10:00 |
+| `linear_calendar_weather` | ridge regression on hour, day-of-week and month, holidays, and heating and cooling degrees (each also by hour) |
