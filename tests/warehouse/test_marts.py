@@ -110,3 +110,20 @@ def test_oracle_weather_is_separate(query, features):
         """
     )
     assert df["diff"].round(6).eq(0.5).all()  # fixture: ERA5 = lead 1 - 0.5
+
+
+def test_mart_has_every_column_the_models_read(features):
+    from chiload.models.baselines import LinearCalendarWeather
+
+    needed = set(LinearCalendarWeather.INPUTS) | {
+        "target_period_utc",
+        "target_date_local",
+        "load_mw",
+        "is_load_imputed",
+        "is_load_anomalous",
+        "load_known_through_utc",
+        "issue_time_utc",
+        "load_lag_48h_mw",
+        "load_lag_168h_mw",
+    }
+    assert needed <= set(features.columns)

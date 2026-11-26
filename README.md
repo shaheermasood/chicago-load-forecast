@@ -7,7 +7,7 @@
 Day-ahead hourly electricity demand forecasts for the **ComEd zone** (Chicago and northern
 Illinois), built as an end-to-end pipeline: ingestion → warehouse → model → API → monitoring.
 
-> **Status:** Phase 2 — warehouse. Raw data → staging → intermediate → `fct_hourly_features`. Results will go here once the model exists.
+> **Status:** Phase 4 — baselines and backtest. Results will go here once it runs on real data. Results will go here once the model exists.
 
 ## The problem
 
@@ -44,6 +44,7 @@ make check                    # lint + tests
 make find-comed               # confirm ComEd's EIA subregion code, then set it in configs/model.yaml
 make backfill                 # fetch 2018-07 → today (EIA + weather); safe to re-run
 make build                    # dbt: build and test the DuckDB warehouse
+make backtest                 # score the baselines month by month; `make mlflow` to browse runs
 ```
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
@@ -72,7 +73,7 @@ See [`docs/decisions/`](docs/decisions/) for why things are the way they are.
 - [ ] Phase 1 — Idempotent ingestion + backfill (loaders done; full backfill pending)
 - [x] Phase 2 — dbt warehouse + data-quality tests (pending a run on real data)
 - [ ] Phase 3 — EDA
-- [ ] Phase 4 — Baselines + rolling-origin backtest
+- [ ] Phase 4 — Baselines + rolling-origin backtest (code done; needs real data)
 - [ ] Phase 5 — Features, models, prediction intervals
 - [ ] Phase 6 — Holdout evaluation, SHAP, model card
 - [ ] Phase 7 — Scheduled pipeline, API, dashboard, monitoring

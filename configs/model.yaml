@@ -28,6 +28,19 @@ weather:
 ingest:
   incremental_lookback_days: 7 # re-fetch this many recent days to pick up revisions and lag
 
+backtest:
+  # Rolling-origin backtest (Phase 4). Train on everything from train_start up to each
+  # month, forecast that month, then roll forward one month.
+  train_start: 2022-01-01 # first full year of archived weather forecasts (ADR 0003)
+  min_train_months: 12 # first test month comes after this much training data
+  holdout_months: 12 # the final 12 months are never used before Phase 6
+  min_eval_hours_per_day: 20 # a day needs this many scored hours to count for peak error
+
+mlflow:
+  tracking_uri: sqlite:///mlruns/mlflow.db
+  artifact_location: mlruns/artifacts
+  experiment: day-ahead-backtest
+
 forecast:
   issue_hour_local: 10 # forecasts issued at 10:00 Central for the next day
   horizon_hours: 48

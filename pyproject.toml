@@ -15,6 +15,8 @@ dependencies = [
     "dbt-duckdb>=1.9",
     "duckdb>=1.1",
     "holidays>=0.60",
+    "scikit-learn>=1.5",
+    "mlflow>=3.0",
 ]
 
 [dependency-groups]
