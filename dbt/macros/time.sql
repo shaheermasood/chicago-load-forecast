@@ -4,3 +4,8 @@
 {% macro to_local(col) -%}
     timezone('{{ var("local_tz") }}', {{ col }})
 {%- endmacro %}
+
+{#- TIMESTAMPTZ for a naive wall-clock timestamp in the zone (inverse of to_local). -#}
+{% macro from_local(col) -%}
+    timezone('{{ var("local_tz") }}', {{ col }})
+{%- endmacro %}

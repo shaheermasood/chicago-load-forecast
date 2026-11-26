@@ -39,8 +39,9 @@ only nulls for 2021-03-01 at O'Hare, so the archive starts somewhere in spring 2
 
 ## Consequences
 
-- `lead_days` is part of the weather key. The Phase 2 feature mart must join `lead_days = 1`
-  for the day-ahead horizon and `lead_days = 2` for hours 25–48.
+- `lead_days` is part of the weather key. Plain "lead 1 for day-ahead" turned out to leak for
+  most hours of the target day. ADR 0006 sets the rule the feature mart uses: it picks the
+  lead per target hour.
 - `previous_dayN` follows Open-Meteo's run timing, not exactly our 10:00 cutoff. Before
   relying on the exact alignment, check Open-Meteo's documented run-to-day mapping against the
   10:00 Central issue time. Record the result here.

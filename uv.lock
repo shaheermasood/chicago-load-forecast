@@ -212,6 +212,7 @@ dependencies = [
     { name = "dbt-core" },
     { name = "dbt-duckdb" },
     { name = "duckdb" },
+    { name = "holidays" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "python-dotenv" },
@@ -233,6 +234,7 @@ requires-dist = [
     { name = "dbt-core", specifier = ">=1.9" },
     { name = "dbt-duckdb", specifier = ">=1.9" },
     { name = "duckdb", specifier = ">=1.1" },
+    { name = "holidays", specifier = ">=0.60" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "python-dotenv", specifier = ">=1.0" },
@@ -463,6 +465,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e6/86/a5b9ec254b90efb180e390e31a4fa50a93b714d6e4174fa9a4ee25607159/filelock-4.3.1.tar.gz", hash = "sha256:4c5ee627c401f1863ac6a0de9a14a28d3bb5f8c730b45e2fd6e5dbc79cf34b9e", size = 742330, upload-time = "2026-11-23T18:01:13.656Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/7b/678c8fbd372ff96375ac0bbdd20b78f20ef8ba6ca5966c49548fa5886557/filelock-4.3.1-py3-none-any.whl", hash = "sha256:79e43df8e9fe509cd83a3899a7c186c8077cbbe4d200a1ed3705c2f3bb6bc487", size = 244559, upload-time = "2026-11-23T18:01:12.261Z" },
+]
+
+[[package]]
+name = "holidays"
+version = "0.109"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/34/5ed9d852606552e19ac76eb9966ce6b1f40f943ad22978fc0012b7d2ff58/holidays-0.109.tar.gz", hash = "sha256:b1ebc71e8fdb62c7cbf043f781f19e2ea1c69c02ecff5c13dcfda4ebd1d3bb69", size = 1114391, upload-time = "2026-11-17T21:55:44.856Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/91/59812b67d8f5082f6f5b658bb2b23cb99be93d572389950d43dfc5bbbfa9/holidays-0.109-py3-none-any.whl", hash = "sha256:7d39c910167116d41fa6aae18d5e72b4541700cdd37743d799c83db3419201b0", size = 1744125, upload-time = "2026-11-17T21:55:42.694Z" },
 ]
 
 [[package]]

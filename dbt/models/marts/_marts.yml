@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: fct_hourly_features
+    description: >
+      One row per target hour, with every feature as known at 10:00 Central the day before.
+      Training and prediction read only this table. Leakage rules are enforced in the SQL and
+      checked by tests/assert_no_load_leakage.sql and tests/assert_no_weather_leakage.sql.
+      Rows after the last reported load (live forecasting) have load_mw NULL.
+    columns:
+      - name: target_period_utc
+        description: The hour being forecast (start of hour, UTC). Primary key.
+        data_tests: [unique, not_null]
+      - name: target_date_local
+        description: Central-time date of the target hour. A day has 23, 24 or 25 hours.
+      - name: hours_in_local_day
+        data_tests:
+          - accepted_values:
+              arguments: { values: [23, 24, 25], quote: false }
+      - name: horizon_hours
+        description: Hours from issue time to the target hour (about 14 to 38 for day-ahead).
+        data_tests:
+          - between:
+              arguments: { min_value: 1, max_value: 48 }
+      - name: load_mw
+        description: Target. Cleaned load (MW); NULL for future hours and long gaps.
+      - name: load_lag_48h_mw
+        description: Load 48 hours before the target hour, if usable at issue time.
+      - name: load_lag_168h_mw
+        description: >
+          Load at the same hour last week. Also the seasonal-naive baseline the project must
+          beat by 30%.
+      - name: weather_lead_days
+        description: >
+          Which forecast run the weather columns come from: 1 when the run from about a day
+          before the target hour was published by issue time, otherwise 2.
+        data_tests:
+          - accepted_values:
+              arguments: { values: [1, 2], quote: false }
+      - name: temp_f
+        description: Zone-average forecast temperature, population-weighted.
+      - name: cooling_degree_f
+        description: max(temp_f - 65, 0). Summed over hours, this gives cooling degree-hours.
+      - name: heating_degree_f
+        description: max(65 - temp_f, 0).
+      - name: is_bridge_day
+        description: >
+          Day after Thanksgiving, Christmas Eve, New Year's Eve, or a Monday/Friday next to a
+          major holiday.
+
+  - name: fct_hourly_weather_oracle
+    description: >
+      ERA5 "actual" weather per target hour, for the Phase 6 ablation only. Never use as a
+      feature for a real forecast.
+    columns:
+      - name: target_period_utc
+        data_tests: [unique, not_null]

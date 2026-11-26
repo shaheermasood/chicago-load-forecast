@@ -7,7 +7,7 @@
 Day-ahead hourly electricity demand forecasts for the **ComEd zone** (Chicago and northern
 Illinois), built as an end-to-end pipeline: ingestion → warehouse → model → API → monitoring.
 
-> **Status:** Phase 2 — warehouse (staging models done). Results will go here once the model exists.
+> **Status:** Phase 2 — warehouse. Raw data → staging → intermediate → `fct_hourly_features`. Results will go here once the model exists.
 
 ## The problem
 
@@ -70,7 +70,7 @@ See [`docs/decisions/`](docs/decisions/) for why things are the way they are.
 
 - [x] Phase 0 — Repo, tooling, CI, ComEd code discovery
 - [ ] Phase 1 — Idempotent ingestion + backfill (loaders done; full backfill pending)
-- [ ] Phase 2 — dbt warehouse + data-quality tests (staging done; intermediate + marts next)
+- [x] Phase 2 — dbt warehouse + data-quality tests (pending a run on real data)
 - [ ] Phase 3 — EDA
 - [ ] Phase 4 — Baselines + rolling-origin backtest
 - [ ] Phase 5 — Features, models, prediction intervals

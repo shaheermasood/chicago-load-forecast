@@ -9,14 +9,43 @@ test-paths: ["tests"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+seed-paths: ["seeds"]
+
 vars:
   local_tz: America/Chicago
+  # Forecast timing. Must match configs/model.yaml (tests/test_config.py checks this).
+  issue_hour_local: 10
+  # How long after the hour a value can be used. A feature is NULL when its source time
+  # isn't at least this far before the issue time (ADR 0006). Revisit both with the live
+  # fetch lags from Phase 7.
+  load_latency_hours: 6 # EIA-930 publication delay we assume
+  weather_run_latency_hours: 6 # time from a model run's start until its forecast is published
+  # Load cleaning (int_load_hourly)
+  load_min_mw: 5000
+  load_max_mw: 30000
+  load_spike_pct: 0.25 # a value this far from the mean of both neighbours is a spike
+  max_interp_gap_hours: 3 # interpolate only gaps up to this many consecutive hours
+  degree_base_f: 65
 
 models:
   chiload:
     staging:
       +materialized: view
       +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  chiload:
+    +schema: seeds
+    holidays:
+      +column_types: { holiday_date: date, holiday_name: varchar, holiday_tier: varchar }
+    weather_points:
+      +column_types: { point: varchar, weight: double }
 
 flags:
   send_anonymous_usage_stats: false
