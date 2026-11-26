@@ -127,3 +127,16 @@ def test_mart_has_every_column_the_models_read(features):
         "load_lag_168h_mw",
     }
     assert needed <= set(features.columns)
+
+
+def test_feature_builder_runs_on_the_real_mart(features):
+    from chiload.features.build import FEATURES, build
+
+    X = build(features)
+    assert list(X.columns) == FEATURES
+    # Where the previous 24 hours all had weather, the rolling mean exists. (The fixture jumps
+    # from March to October, so the first October hours rightly have no history.)
+    temp = features.set_index("target_period_utc")["temp_f"]
+    full_history = temp.notna().rolling("24h", closed="left").sum().eq(24).to_numpy()
+    assert X.loc[full_history, "temp_mean_prev_24h_f"].notna().all()
+    assert full_history.sum() > 500

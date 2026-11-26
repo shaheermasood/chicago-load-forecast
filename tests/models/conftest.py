@@ -56,6 +56,41 @@ def make_features(start="2022-01-01", end="2024-12-31 23:00", seed=0) -> pd.Data
     issue = pd.to_datetime(df["target_date_local"]) - pd.Timedelta(days=1) + pd.Timedelta(hours=10)
     df["issue_time_utc"] = (issue + pd.Timedelta(hours=6)).dt.tz_localize("UTC")
     df["load_known_through_utc"] = df["issue_time_utc"] - pd.Timedelta(hours=7)
+    df["horizon_hours"] = (df["target_period_utc"] - df["issue_time_utc"]) / pd.Timedelta(hours=1)
+
+    # Load summaries as of each day's cutoff, the same as int_forecast_issues.
+    by_time = pd.Series(load, index=utc)
+    stats = pd.DataFrame(
+        {
+            "last": by_time,
+            "mean24": by_time.rolling(24).mean(),
+            "mean168": by_time.rolling(168).mean(),
+            "max24": by_time.rolling(24).max(),
+        }
+    ).reindex(df["load_known_through_utc"])
+    df["load_last_known_mw"] = stats["last"].to_numpy()
+    df["load_mean_24h_at_issue_mw"] = stats["mean24"].to_numpy()
+    df["load_mean_168h_at_issue_mw"] = stats["mean168"].to_numpy()
+    df["load_max_24h_at_issue_mw"] = stats["max24"].to_numpy()
+
+    df["doy_local"] = doy
+    df["hour_sin"], df["hour_cos"] = np.sin(2 * np.pi * hour / 24), np.cos(2 * np.pi * hour / 24)
+    df["dow_sin"], df["dow_cos"] = (
+        np.sin(2 * np.pi * (dow - 1) / 7),
+        np.cos(2 * np.pi * (dow - 1) / 7),
+    )
+    df["doy_sin"] = np.sin(2 * np.pi * (doy - 1) / 365.25)
+    df["doy_cos"] = np.cos(2 * np.pi * (doy - 1) / 365.25)
+    df["is_weekend"] = dow >= 6
+    df["is_dst"] = False
+    df["holiday_tier"] = None
+    df["weather_lead_days"] = np.where(df["horizon_hours"] <= 18, 1, 2)
+    df["dew_point_f"] = temp - 10
+    df["apparent_temp_f"] = temp
+    df["rh_pct"] = 60.0
+    df["wind_mph"] = 8.0
+    df["cloud_cover_pct"] = 40.0
+    df["temp_spread_f"] = 3.0
     return df
 
 

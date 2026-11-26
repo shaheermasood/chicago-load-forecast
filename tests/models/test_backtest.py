@@ -8,6 +8,7 @@ import pytest
 from chiload.models import backtest
 from chiload.models.backtest import add_months, fold_frames, make_folds, run_backtest, summary_table
 from chiload.models.baselines import default_baselines
+from chiload.models.gbm import LightGBMForecaster
 
 SETTINGS = {"train_start": date(2022, 1, 1), "min_train_months": 12, "holdout_months": 12}
 
@@ -96,6 +97,7 @@ def test_cli_logs_to_mlflow(features, tmp_path, monkeypatch, capsys):
     def fake_load_yaml(name):
         cfg = real_load(name)
         if name == "model":
+            cfg["models"]["lightgbm"]["params"].update(n_estimators=40, learning_rate=0.1)
             cfg["mlflow"] = {
                 "tracking_uri": f"sqlite:///{tmp_path}/mlflow.db",
                 "artifact_location": str(tmp_path / "artifacts"),
@@ -110,8 +112,36 @@ def test_cli_logs_to_mlflow(features, tmp_path, monkeypatch, capsys):
     import mlflow
 
     runs = mlflow.search_runs(experiment_names=["test"])
-    assert sorted(runs["tags.model"]) == sorted(m.name for m in default_baselines())
+    assert sorted(runs["tags.model"]) == sorted(
+        ["seasonal_naive_week", "naive_48h", "linear_calendar_weather", "lightgbm"]
+    )
     assert runs["metrics.mape"].notna().all()
     assert runs["params.holdout_start"].eq("2024-01-01").all()
     assert "linear_calendar_weather" in report.read_text()
     assert "holdout from 2024-01-01 untouched" in capsys.readouterr().out
+    gbm = runs[runs["tags.model"] == "lightgbm"].iloc[0]
+    assert 0.6 < gbm["metrics.interval_coverage"] < 0.95
+    artifacts = mlflow.artifacts.list_artifacts(run_id=gbm["run_id"])
+    assert "feature_importance_gain.json" in {a.path for a in artifacts}
+
+
+def test_cli_rejects_unknown_models(features, tmp_path):
+    db = tmp_path / "w.duckdb"
+    with duckdb.connect(str(db)) as con:
+        con.execute("create schema marts")
+        con.register("f", features.head(10))
+        con.execute("create table marts.fct_hourly_features as select * from f")
+    with pytest.raises(SystemExit):
+        backtest.main(["--db", str(db), "--models", "nope", "--no-mlflow"])
+
+
+def test_interval_metrics_only_for_models_with_intervals(features):
+    models = [
+        default_baselines()[0],
+        LightGBMForecaster({"n_estimators": 40, "learning_rate": 0.1}),
+    ]
+    _, metrics, _ = run_backtest(features, models, **SETTINGS)
+    overall = metrics[metrics["fold"] == "all"].set_index("model")
+    assert pd.isna(overall.loc["seasonal_naive_week", "interval_coverage"])
+    assert 0.6 < overall.loc["lightgbm", "interval_coverage"] < 0.95
+    assert overall.loc["lightgbm", "interval_width_pct"] > 0

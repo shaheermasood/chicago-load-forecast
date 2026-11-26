@@ -62,3 +62,9 @@ an artifact. It also writes `reports/baselines.md`.
 | `seasonal_naive_week` | load at the same hour one week earlier: the bar to beat by 30% |
 | `naive_48h` | load at the same hour two days earlier, the latest same-hour value known at 10:00 |
 | `linear_calendar_weather` | ridge regression on hour, day-of-week and month, holidays, and heating and cooling degrees (each also by hour) |
+| `lightgbm` (Phase 5) | gradient-boosted trees on `chiload.features.build` (41 features), with conformalized 80% intervals (ADR 0008) |
+
+Feature matrix: `src/chiload/features/build.py` takes the mart columns and adds temperature ×
+time-of-day interactions, rolling 24 h and 72 h forecast temperatures, and a holiday-tier code.
+`make backtest` runs every model. `--models` picks a subset, and the weekly naive is always
+included as the reference.

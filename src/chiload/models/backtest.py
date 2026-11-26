@@ -32,6 +32,7 @@ import pandas as pd
 from chiload import config
 from chiload.models.baselines import Forecaster, default_baselines
 from chiload.models.data import DEFAULT_DB, evaluable, load_features
+from chiload.models.gbm import LightGBMForecaster
 from chiload.models.metrics import score
 
 log = logging.getLogger(__name__)
@@ -139,7 +140,17 @@ def run_backtest(
         )
         for model in models:
             model.fit(train)
-            preds.append(base.assign(model=model.name, prediction=model.predict(test)))
+            lower = upper = np.full(len(test), np.nan)
+            if hasattr(model, "predict_interval"):
+                lower, upper = model.predict_interval(test)
+            preds.append(
+                base.assign(
+                    model=model.name,
+                    prediction=model.predict(test),
+                    lower=lower,
+                    upper=upper,
+                )
+            )
         log.info(
             "fold %d (%s): train %d rows, test %d rows",
             fold.index,
@@ -160,6 +171,12 @@ def score_predictions(predictions: pd.DataFrame, min_eval_hours_per_day: int = 2
     )
     by_model = predictions.pivot(index="target_period_utc", columns="model", values="prediction")
     wide = base.join(by_model).reset_index()
+    bounds = {
+        side: predictions.pivot(index="target_period_utc", columns="model", values=side)
+        .reindex(wide["target_period_utc"])
+        .reset_index(drop=True)
+        for side in ("lower", "upper")
+    }
     models = sorted(predictions["model"].unique())
     common = wide["evaluable"] & wide[models].notna().all(axis=1)
 
@@ -179,6 +196,11 @@ def score_predictions(predictions: pd.DataFrame, min_eval_hours_per_day: int = 2
                 wide["evaluable"] if fold == "all" else wide["evaluable"] & (wide["fold"] == fold)
             )
             metrics["coverage"] = float((own & scope).sum() / max(scope.sum(), 1))
+            lo, hi = bounds["lower"].loc[part.index, model], bounds["upper"].loc[part.index, model]
+            if lo.notna().all():
+                y = part["load_mw"]
+                metrics["interval_coverage"] = float(((y >= lo) & (y <= hi)).mean())
+                metrics["interval_width_pct"] = float(((hi - lo) / y).mean() * 100)
             rows.append({"model": model, "fold": str(fold), **metrics})
     return pd.DataFrame(rows)
 
@@ -198,8 +220,10 @@ def summary_table(
         "bias_pct",
         "coverage",
         "n_hours",
+        "interval_coverage",
+        "interval_width_pct",
     ]
-    return overall[cols].sort_values("mape")
+    return overall[[c for c in cols if c in overall.columns]].sort_values("mape")
 
 
 def to_markdown(table: pd.DataFrame) -> str:
@@ -208,6 +232,32 @@ def to_markdown(table: pd.DataFrame) -> str:
     for name, row in table.iterrows():
         lines.append("| " + " | ".join([str(name), *(str(v) for v in row)]) + " |")
     return "\n".join(lines) + "\n"
+
+
+OVERALL_METRICS = (
+    "mape",
+    "rmse",
+    "daily_peak_mape",
+    "bias_pct",
+    "coverage",
+    "n_hours",
+    "interval_coverage",
+    "interval_width_pct",
+)
+
+
+def available_models(cfg: dict) -> dict[str, Forecaster]:
+    """Every model the backtest can run, keyed by name."""
+    gbm_cfg = cfg.get("models", {}).get("lightgbm", {})
+    models: list[Forecaster] = [
+        *default_baselines(),
+        LightGBMForecaster(
+            gbm_cfg.get("params"),
+            interval=gbm_cfg.get("interval", 0.8),
+            calibration_days=gbm_cfg.get("calibration_days", 60),
+        ),
+    ]
+    return {m.name: m for m in models}
 
 
 def log_to_mlflow(
@@ -231,7 +281,7 @@ def log_to_mlflow(
     for model in models:
         m = fold_metrics[fold_metrics["model"] == model.name]
         with mlflow.start_run(run_name=model.name):
-            mlflow.set_tags({"phase": "4-baselines", "model": model.name})
+            mlflow.set_tags({"stage": "backtest", "model": model.name})
             mlflow.log_params({**settings, **{f"model.{k}": v for k, v in model.params().items()}})
             mlflow.log_params(
                 {
@@ -242,19 +292,19 @@ def log_to_mlflow(
                 }
             )
             for _, row in m[m["fold"] != "all"].iterrows():
-                for k in ("mape", "rmse", "daily_peak_mape", "bias_pct"):
-                    if pd.notna(row[k]):
+                for k in ("mape", "rmse", "daily_peak_mape", "bias_pct", "interval_coverage"):
+                    if k in row and pd.notna(row[k]):
                         mlflow.log_metric(f"fold_{k}", row[k], step=int(row["fold"]))
             overall = m[m["fold"] == "all"].iloc[0]
             mlflow.log_metrics(
-                {
-                    k: overall[k]
-                    for k in ("mape", "rmse", "daily_peak_mape", "bias_pct", "coverage", "n_hours")
-                    if pd.notna(overall[k])
-                }
+                {k: overall[k] for k in OVERALL_METRICS if k in overall and pd.notna(overall[k])}
             )
             mine = predictions[predictions["model"] == model.name].drop(columns="model")
             mlflow.log_table(mine.astype({"target_date_local": str}), "predictions.json")
+            if hasattr(model, "feature_importance"):
+                # Importance from the last fold's model, the one trained on the most data.
+                imp = model.feature_importance()
+                mlflow.log_dict(imp.round(1).to_dict(), "feature_importance_gain.json")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -262,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--no-mlflow", action="store_true", help="skip MLflow logging")
     parser.add_argument("--report", type=Path, help="write the summary table as Markdown here")
+    parser.add_argument("--models", help="comma-separated subset (default: all)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -273,7 +324,14 @@ def main(argv: list[str] | None = None) -> int:
         "holdout_months": bt["holdout_months"],
     }
     df = load_features(args.db)
-    models = default_baselines()
+    registry = available_models(cfg)
+    wanted = args.models.split(",") if args.models else list(registry)
+    unknown = set(wanted) - set(registry)
+    if unknown:
+        parser.error(f"unknown models {sorted(unknown)}; choose from {sorted(registry)}")
+    if "seasonal_naive_week" not in wanted:
+        wanted.insert(0, "seasonal_naive_week")  # the reference every result is compared to
+    models = [registry[name] for name in wanted]
     predictions, fold_metrics, plan = run_backtest(
         df, models, min_eval_hours_per_day=bt["min_eval_hours_per_day"], **settings
     )
